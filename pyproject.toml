@@ -1,0 +1,126 @@
+[project]
+name = "intelliperf"
+version = "0.0.1"
+description = "Automated bottleneck detection and solution orchestration"
+authors = [
+    { name = "Muhammad Awad", email = "muhaawad@amd.com" },
+    { name = "Cole Ramos", email = "Cole.Ramos@amd.com" },
+]
+
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.8"
+
+# Python dependencies 
+dependencies = ["tomli", "openai>=1.0.0", "tabulate", "ml_dtypes", "dspy", "pandas", "duckdb", "rich", "pytest"]
+
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["intelliperf", "accordo"]
+
+[project.scripts]
+intelliperf = "intelliperf.__main__:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.rocprofiler-compute]
+git = "https://github.com/ROCm/rocprofiler-compute"
+branch = "41e73650d5cfc3dbd98e007d6279235578f8529a"
+build_command = """
+python3 -m pip install --ignore-installed blinker &&
+python3 -m pip install -r requirements.txt
+"""
+
+
+[tool.omniprobe]
+git = "git@github.com:AMDResearch/omniprobe.git"
+branch = "9083730ab0da50114c767773df49cb1d2165ba7f"
+build_command = """
+export CC=${ROCM_PATH}/bin/hipcc
+export CXX=${ROCM_PATH}/bin/hipcc
+git submodule update --init --recursive
+#TODO: search for a Triton LLVM.
+if [ -d "/root/.triton/llvm/llvm-ubuntu-x64" ]; then
+    export TRITON_LLVM_PATH="/root/.triton/llvm/llvm-ubuntu-x64"
+else
+    export TRITON_LLVM_PATH="${ROCM_PATH}/llvm/"
+fi
+cmake -DCMAKE_PREFIX_PATH=${ROCM_PATH} \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=install \
+      -DCMAKE_VERBOSE_MAKEFILE=ON -S . -B build &&
+cmake --build build --parallel 1 &&
+cmake --install build
+"""
+
+
+[tool.nexus]
+git = "git@github.com:AMDResearch/nexus.git"
+branch = "main"
+build_command = """
+export CC=${ROCM_PATH}/bin/hipcc
+export CXX=${ROCM_PATH}/bin/hipcc
+cmake -B build -DCMAKE_PREFIX_PATH=/opt/rocm\
+    -DLLVM_INSTALL_DIR=/opt/rocm/llvm\
+    -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --parallel 16
+"""
+
+[project.optional-dependencies]
+dev = [
+    "ruff==0.3.0",
+    "pre-commit==3.6.0"
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "W",   # pycodestyle warnings
+    "D",   # pydocstyle
+    "ERA", # eradicate (detects commented-out code and merge conflicts)
+]
+ignore = [
+    "E501",  # line too long (handled by line-length)
+    "E701",  # multiple statements on one line
+    "E731",  # do not assign a lambda expression
+    "D100",  # Missing docstring in public module
+    "D101",  # Missing docstring in public class
+    "D102",  # Missing docstring in public method
+    "D103",  # Missing docstring in public function
+    "D104",  # Missing docstring in public package
+    "D105",  # Missing docstring in magic method
+    "D106",  # Missing docstring in public nested class
+    "D107",  # Missing docstring in __init__
+    "W292",  # No newline at end of file (handled by Ruff)
+    "W291",  # Trailing whitespace (handled by Ruff)
+    "W293",  # Blank line contains whitespace (handled by Ruff)
+    "W191",  # Indentation contains tabs (we want tabs)
+    "D203",  # one-blank-line-before-class (using D211 instead)
+    "D212",  # multi-line-summary-first-line (using D213 instead)
+    "ERA001", # Found commented-out code
+    "D200",  # One-line docstring should fit on one line
+    "D206",  # Docstring should be indented with spaces, not tabs
+    "D415",  # First line should end with a period, question mark, or exclamation point
+    "D417",  # Missing argument description in the docstring
+    "E101",  # Indentation contains mixed spaces and tabs
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+line-ending = "auto"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # Use Google-style docstrings
