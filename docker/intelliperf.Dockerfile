@@ -31,7 +31,7 @@ WORKDIR $INTELLIPERF_HOME
 
 # Clone IntelliPerf only in non-dev mode
 RUN --mount=type=ssh bash -c 'if [ "$DEV_MODE" = "false" ]; then \
-    git clone git@github.com:AMDResearch/intelliperf.git . ; \
+    git clone https://github.com/Lzy17/intelliperf.git . ; \
     pip install -e .; \
     python3 scripts/install_tool.py --all; \
     fi'
